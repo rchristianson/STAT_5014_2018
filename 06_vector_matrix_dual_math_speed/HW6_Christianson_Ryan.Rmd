@@ -1,0 +1,132 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: inline
+---
+
+## Problem 1
+
+Done.
+
+## Problem 2
+
+```{r}
+set.seed(12345)
+y <- seq(from = 1, to = 100, length.out = 1e+08) + rnorm(1e+08)
+mean.y <- mean(y)
+sum.squares.loop <- 0
+
+system.time({
+  for (i in 1:length(y)) {
+    sum.squares.loop <- sum.squares.loop + (y[i] - mean.y)^2
+  }
+})
+
+system.time({
+  sum.squares.vectorized <- sum((y - mean.y)^2)
+})
+
+print(sum.squares.vectorized)
+print(sum.squares.loop)
+# maybe should clear memory cause thesa are kinda big
+```
+
+## Problem 3
+
+```{r}
+set.seed(1256)
+theta <- as.matrix(c(1, 2), nrow = 2)
+X <- cbind(1, rep(1:10, 10))
+h <- X %*% theta + rnorm(100, 0, 0.2)
+
+CalcTheta <- function(x, h,
+                      theta00 = 0, theta10 = 0,
+                      alpha = 0.01, tolerance = 1e-9, max.iter = 1e6) {
+  # check variables
+  stopifnot(nrow(x) == length(h))
+  stopifnot(max.iter > 1)
+  stopifnot(alpha > 0)
+  stopifnot(tolerance > 0)
+  
+  # set up looping
+  m <- nrow(x)
+  prev.theta0 <- theta00 + 2 * tolerance
+  prev.theta1 <- theta10 + 2 * tolerance
+  theta0 <- theta00
+  theta1 <- theta10
+  iter <- 0
+  
+  while ((abs(theta0 - prev.theta0) > tolerance &&
+          abs(theta1 - prev.theta1) > tolerance) &&
+         iter < max.iter) {
+    prev.theta0 <- theta0
+    prev.theta1 <- theta1
+    theta0 <- prev.theta0 - (alpha / m * sum(x %*% c(prev.theta0, prev.theta1) - h))
+    theta1 <- prev.theta1 - (alpha / m * sum((x %*% c(prev.theta0, prev.theta1) - h) * x[, 2]))
+    iter <- iter + 1
+  }
+  return(c(theta0, theta1))
+}
+
+lm.xh <- lm(h ~ 0 + X)
+coefficients(lm.xh)
+CalcTheta(X, h)
+```
+
+I get very close to the linear regression coefficients with threshold 1e-9 and max iterations of 1e6 and alpha 0.01.
+
+## Problem 4
+
+We can solve the system of equations $(X^tX)\hat{\beta} = X^ty$ which will give us the same answer as inverting the matrix, but will be faster and more accurate.
+
+## Problem 5
+
+```{r, echo = TRUE}
+set.seed(12456)
+G <- matrix(sample(c(0, 0.5, 1), size = 16000, replace = T),
+ncol = 10)
+R <- cor(G) # R: 10 * 10 correlation matrix of G
+C <- kronecker(R, diag(1600)) # C is a 16000 * 16000 block diagonal matrix
+id <- sample(1:16000, size = 932, replace = F)
+q <- sample(c(0, 0.5, 1), size = 15068, replace = T) # vector of length 15068
+A <- C[id, -id] # matrix of dimension 932 * 15068
+B <- C[-id, -id] # matrix of dimension 15068 * 15068
+p <- runif(932, 0, 1)
+r <- runif(15068, 0, 1)
+C <- NULL #save some memory space
+
+# part a
+# get memory of A and B
+object.size(A)
+object.size(B)
+
+# get time of calculating y
+system.time({
+  y.base <- p + A %*% solve(B) * (q - r)
+})
+# 1076
+
+# part c
+# system.time({
+#   y.imp1 <- p + A %*% chol2inv(chole(B)) * (q - r)
+# })
+
+# system.time({
+#   Rcpp::cppFunction("arma::mat armaCalc(arma::mat B, arma::mat A, arma::vec p, arma::vec q, arma::vec r) { return p + B * arma::inv(A) * (q - r); }", depends="RcppArmadillo")
+#   y.imp2 <- armaCalc(B, A, p, q, r)
+# })
+
+system.time({
+  y.imp <- p + t(solve(t(B), t(A))) * (q - r)
+})
+## 775
+```
+
+b. Invert B, then multiply by A, then do q - r, then multiply that by the matrix, then add p. We can pass A into the solve to multiply by that instead of I. There should be some structure in B since it came from a correlation matrix. A Cholesky decomposition may be appropriate because of this structure. After trying it, Cholesky decompisition was slower. Also trying to use C++ may speed it up. This was also slower. Parallel computing probably won't help much because my computer has only 2 cores. The only thing I can think to do is use the solve with a second matrix instead of the identity matrix to speed up.
+
+## Problem 6
+
+Done.
