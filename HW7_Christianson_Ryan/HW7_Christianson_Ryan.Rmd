@@ -1,0 +1,45 @@
+---
+title: "5014 Homework 7"
+author: "Ryan Christianson"
+date: "October 10, 2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r, warning = FALSE}
+# animation won't show in pdf
+# libraries
+library("ggplot2")
+
+# deprecated:
+# devtools::install_github("dgrtwo/gganimate")
+
+# this works I believe:
+# devtools::install_github('thomasp85/gganimate')
+library("gganimate")
+```
+
+```{r, warning = FALSE}
+datasaurus <- readxl::read_xlsx("HW4_data.xlsx")
+
+ggplot(datasaurus, aes(x = depth, y = phosphate)) +
+  geom_point() +
+  labs(x = "Depth", y = "Phosphate") +
+  facet_wrap(block ~ .) +
+  ggtitle("Data by Block") +
+  theme_bw()
+```
+
+```{r, warning = FALSE}
+# this was a huge pain because I started using the deprecated version
+# the gif is slow and I had to knit to html
+ggplot(datasaurus, aes(x = depth, y = phosphate)) +
+  geom_point() +
+  labs(x = "Depth", y = "Phosphate") +
+  ggtitle("Datasaurus GIF") +
+  theme_bw() +
+  transition_time(block) +
+  ease_aes("linear")
+```
+
